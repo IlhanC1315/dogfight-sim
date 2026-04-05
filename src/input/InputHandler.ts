@@ -10,4 +10,5 @@ export class InputHandler {
     get right(): boolean { return this.keys.has('ArrowRight') || this.keys.has('KeyD') }
     get up(): boolean { return this.keys.has('ArrowUp') || this.keys.has('KeyZ') }
     get shoot(): boolean { return this.keys.has('Space') }
+    get down(): boolean { return this.keys.has('ArrowDown')}
 }
