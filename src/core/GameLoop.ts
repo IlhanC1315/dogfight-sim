@@ -1,75 +1,119 @@
-import { InputHandler } from "../input/InputHandler"
-import { AirCraft } from "./Aircraft"
-import { Vec2 } from "./Vec2"
+import { AirCraft } from './Aircraft'
+import { Projectile } from './Projectile'
+import { InputHandler } from '../input/InputHandler'
+import { Vec2 } from './Vec2'
 
 export class GameLoop {
   private ctx: CanvasRenderingContext2D
   private lastTime: number = 0
   private running: boolean = false
-  private player: AirCraft
+  private avion: AirCraft
   private input: InputHandler
+
+  // La liste de tous les missiles en vol en ce moment
+  private missiles: Projectile[] = []
+
+  // Temps d'attente entre deux tirs — évite de spammer Espace
+  private cooldownTir: number = 0
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
-    this.player = new AirCraft(canvas.width / 2, canvas.height / 2)
-    this.player.heading = 0
+    this.avion = new AirCraft(canvas.width / 2, canvas.height / 2)
     this.input = new InputHandler()
   }
 
-  start(): void {
+  demarrer(): void {
     this.running = true
     requestAnimationFrame(this.tick)
   }
 
+  // Cette fonction est appelée automatiquement 60x par seconde
   private tick = (timestamp: number): void => {
     if (!this.running) return
 
+    // dt = temps écoulé depuis la dernière frame en secondes
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05)
     this.lastTime = timestamp
 
-    this.update(dt)
-    this.render()
+    this.mettreAJour(dt)
+    this.dessiner()
 
     requestAnimationFrame(this.tick)
   }
 
-  private update(dt: number): void {
-    this.handleInput(dt)
-    this.player.update(dt)
-    this.wrapScreen()
+  private mettreAJour(dt: number): void {
+    this.gererClavier(dt)
+    this.avion.update(dt)
+    this.gererBords()
+    this.mettreAJourMissiles(dt)
   }
 
-  private handleInput(dt: number): void {
-    // Tourner gauche / droite
-    if (this.input.left) this.player.heading -= this.player.TURN_SPEED * dt
-    if (this.input.right) this.player.heading += this.player.TURN_SPEED * dt
+  private gererClavier(dt: number): void {
+    const vitesseCroisiere = 250
+    // Tourner
+    if (this.input.left) this.avion.heading -= this.avion.TURN_SPEED * dt
+    if (this.input.right) this.avion.heading += this.avion.TURN_SPEED * dt
 
     // Accélérer
     if (this.input.up) {
-      this.player.speed = Math.min(this.player.speed + 200 * dt, 300)
+      this.avion.speed = Math.min(this.avion.speed + 300 * dt, 500)
+    } else if (this.input.down) {
+      this.avion.speed = Math.max(this.avion.speed - 200 * dt, 100)
     } else {
-      // Décélération progressive
-      this.player.speed = Math.max(this.player.speed - 80 * dt, 80)
+      if (this.avion.speed > vitesseCroisiere) {
+        this.avion.speed = Math.max(this.avion.speed - 150 * dt, vitesseCroisiere)
+      } else {
+        this.avion.speed = Math.min(this.avion.speed + 150 * dt, vitesseCroisiere)
+      }
+    }
+
+    // Tir — on décrémente le cooldown à chaque frame
+    this.cooldownTir -= dt
+
+    // Si Espace appuyé ET cooldown terminé → on tire
+    if (this.input.shoot && this.cooldownTir <= 0) {
+      const missile = this.avion.tirer()
+
+      // Si l'avion a encore des munitions (pas null)
+      if (missile !== null) {
+        this.missiles.push(missile) // ajouter à la liste
+        this.cooldownTir = 3     // attendre 0.25s avant prochain tir
+      }
     }
   }
 
-  private wrapScreen(): void {
-    const p = this.player.pos
-    const w = this.canvas.width
-    const h = this.canvas.height
+  private mettreAJourMissiles(dt: number): void {
+    // Faire avancer chaque missile
+    for (const missile of this.missiles) {
+      missile.avancer(dt)
+    }
 
-    if (p.x > w) this.player.pos = new Vec2(0, p.y)
-    if (p.x < 0) this.player.pos = new Vec2(w, p.y)
-    if (p.y > h) this.player.pos = new Vec2(p.x, 0)
-    if (p.y < 0) this.player.pos = new Vec2(p.x, h)
+    // Supprimer les missiles morts de la liste
+    // filter garde seulement ceux où estVivant = true
+    this.missiles = this.missiles.filter(m => m.estVivant)
   }
 
-  private render(): void {
-    // Fond noir
+  private gererBords(): void {
+    const p = this.avion.pos
+    const w = this.canvas.width
+    const h = this.canvas.height
+    if (p.x > w) this.avion.pos = new Vec2(0, p.y)
+    if (p.x < 0) this.avion.pos = new Vec2(w, p.y)
+    if (p.y > h) this.avion.pos = new Vec2(p.x, 0)
+    if (p.y < 0) this.avion.pos = new Vec2(p.x, h)
+  }
+
+  private dessiner(): void {
+    // Effacer l'écran
     this.ctx.fillStyle = '#0a0a0f'
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
 
-    // Dessiner l'avion
-    this.player.draw(this.ctx, '#5DCAA5')
+    // Dessiner les missiles
+    for (const missile of this.missiles) {
+      missile.dessiner(this.ctx)
+    }
+
+    // Dessiner l'avion par dessus
+    this.avion.draw(this.ctx, '#5DCAA5')
   }
 }
