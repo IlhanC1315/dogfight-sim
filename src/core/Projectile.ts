@@ -9,12 +9,13 @@ export class Projectile {
     public damage: number
     public tempsDeVie: number
     public estVivant: boolean
+    public sonFusee: { stopper: () => void } | null = null
     public readonly radius = 6
 
     constructor(x: number, y: number, angle: number) {
         this.position = new Vec2(x, y)
         this.direction = Vec2.depuisAngle(angle)
-        this.speed = 600
+        this.speed = 1000
         this.damage = 50
         this.tempsDeVie = 2
         this.estVivant = true
@@ -23,7 +24,7 @@ export class Projectile {
     avancer(dt: number): void {
         this.position = this.position.ajouter(this.direction.multiplier(this.speed * dt))
         this.tempsDeVie = this.tempsDeVie - dt
-        if(this.tempsDeVie <= 0) {
+        if (this.tempsDeVie <= 0) {
             this.exploser()
         }
     }
@@ -31,10 +32,6 @@ export class Projectile {
     toucher(avion: AirCraft): void {
         avion.hp = avion.hp - this.damage
         this.exploser()
-    }
-
-    exploser(): void {
-        this.estVivant = false
     }
 
     dessiner(ctx: CanvasRenderingContext2D): void {
@@ -52,4 +49,13 @@ export class Projectile {
 
         ctx.restore()
     }
+
+    // Dans exploser() — stoppe le son quand le missile meurt
+    exploser(): void {
+        this.estVivant = false
+        if (this.sonFusee !== null) {
+            this.sonFusee.stopper()
+        }
+    }
+    
 }
