@@ -1,10 +1,12 @@
 import { Vec2 } from "./Vec2";
+import { Projectile } from "./Projectile";
 
 export class AirCraft {
     public pos: Vec2
     public heading: number      // angle en radians — où l'avion pointe
     public speed: number        // pixels par seconde
-    public hp: number           // points de vie
+    public hp: number          // points de vie
+    public munition: number
     public readonly radius = 12 // pour les collisions
 
     readonly TURN_SPEED = 2.5   // radians par seconde
@@ -12,13 +14,14 @@ export class AirCraft {
     constructor(x: number, y: number) {
         this.pos = new Vec2(x, y)
         this.heading = 0
-        this.speed = 150
+        this.speed = 250
         this.hp = 100
+        this.munition = 6
     }
 
     update(dt: number): void { //Avancer dans la direction du heading
-        const dir = Vec2.fromAngle(this.heading)
-        this.pos = this.pos.add(dir.scale(this.speed * dt))
+        const dir = Vec2.depuisAngle(this.heading)
+        this.pos = this.pos.ajouter(dir.multiplier(this.speed * dt))
     }
 
     steer(targetDir: Vec2, dt: number): void {
@@ -60,5 +63,15 @@ export class AirCraft {
 
     takeDamage(amount: number): void {
         this.hp = Math.max(0, this.hp - amount)
+    }
+
+    tirer(): Projectile | null {
+        if (this.munition <= 0) {
+            return null
+        }
+        const pointe = Vec2.depuisAngle(this.heading).multiplier(16)
+        const posDepart = this.pos.ajouter(pointe)
+        this.munition -= 1 
+        return new Projectile(posDepart.x, posDepart.y, this.heading)
     }
 }
