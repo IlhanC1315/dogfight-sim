@@ -1,8 +1,8 @@
 import { GameLoop } from "./core/GameLoop"
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
-canvas.width = 900
-canvas.height = 600
+canvas.width = 1800
+canvas.height = 900
 
 const loop = new GameLoop(canvas)
-loop.start()
+loop.demarrer()
